@@ -1,28 +1,22 @@
+<!-- LoginModal.vue -->
 <template>
-  <!-- 背景遮罩层，点击空白区域时关闭弹窗 -->
-  <div class="modal-overlay" @click.self="closeModal">
-    <!-- 弹窗内容区域 -->
-    <div class="modal-content">
-      <!-- 关闭按钮，点击时触发关闭弹窗的方法 -->
+  <div class="modal-overlay" @mousedown.self="closeModal">
+    <div class="modal-content" @mousedown.stop>
       <button @click="closeModal" class="close-btn">×</button>
 
-      <!-- 弹窗标题 -->
       <h2>登录您的账户</h2>
 
-      <!-- 登录表单，表单提交时调用 handleLogin 方法 -->
       <form @submit.prevent="handleLogin">
-        <!-- 用户名输入框 -->
-        <label for="username">用户名</label>
+        <label for="emailOrPhone">邮箱/手机号</label>
         <input
-          id="username"
-          v-model="username"
+          id="emailOrPhone"
+          v-model="emailOrPhone"
           type="text"
-          placeholder="请输入用户名"
-          :class="{ 'input-error': error && !username }"
+          placeholder="请输入邮箱或手机号"
+          :class="{ 'input-error': error && !emailOrPhone }"
           :disabled="isLoading"
         />
 
-        <!-- 密码输入框 -->
         <label for="password">密码</label>
         <input
           id="password"
@@ -33,22 +27,14 @@
           :disabled="isLoading"
         />
 
-        <!-- 错误信息 -->
         <div v-if="error" class="error-message">{{ error }}</div>
 
-        <!-- 登录按钮 -->
-        <button
-          type="submit"
-          class="btn-primary"
-          :disabled="isLoading"
-          @click="handleLoginDebounced"
-        >
+        <button type="submit" class="btn-primary" :disabled="isLoading">
           <span v-if="isLoading">正在登录...</span>
           <span v-else>登录</span>
         </button>
       </form>
 
-      <!-- 注册和忘记密码按钮 -->
       <div class="extra-actions">
         <button @click="register" class="link-btn">注册</button>
         <button @click="forgotPassword" class="link-btn">忘记密码</button>
@@ -59,81 +45,105 @@
 
 <script>
 import axios from "axios";
-
-// 防抖函数实现
-function debounce(func, delay) {
-  let timer;
-  return function (...args) {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      func.apply(this, args);
-    }, delay);
-  };
-}
+import { mapActions } from "vuex"; // 导入 Vuex 的 mapActions
 
 export default {
   data() {
     return {
-      username: "", // 用户名输入
-      password: "", // 密码输入
-      error: "", // 错误信息
-      isLoading: false, // 添加加载状态
+      emailOrPhone: "", // 存储用户输入的邮箱或手机号
+      password: "", // 存储用户输入的密码
+      error: "", // 错误信息，显示在表单下方
+      isLoading: false, // 控制登录请求的加载状态
     };
   },
   methods: {
+    ...mapActions([
+      "updateUserInfo", // Vuex action，更新用户信息
+      "updateToken", // Vuex action，更新 token
+      "updateLoginStatus", // Vuex action，更新登录状态
+    ]),
+
+    // 处理登录逻辑
     handleLogin() {
-      // 校验用户名和密码是否为空
-      if (!this.username || !this.password) {
-        this.error = "用户名和密码不能为空";
+      // 检查邮箱/手机号和密码是否为空
+      if (!this.emailOrPhone || !this.password) {
+        this.error = "邮箱/手机号和密码不能为空";
         return;
       }
 
-      // 开始加载状态
+      // 校验邮箱格式或手机号格式
+      const isEmail = /\S+@\S+\.\S+/.test(this.emailOrPhone); // 正则表达式检查邮箱格式
+      const isPhoneNumber = /^\d{11}$/.test(this.emailOrPhone); // 正则表达式检查手机号格式
+
+      // 如果既不是邮箱也不是手机号，显示错误信息
+      if (!isEmail && !isPhoneNumber) {
+        this.error = "请输入有效的邮箱或手机号";
+        return;
+      }
+
+      // 启动加载状态
       this.isLoading = true;
       this.error = ""; // 清空错误信息
 
+      // 构建请求体
+      const requestPayload = {
+        password: this.password, // 密码
+      };
+
+      // 根据输入的是邮箱还是手机号，动态构造请求体
+      if (isEmail) {
+        requestPayload.userEmail = this.emailOrPhone;
+      } else if (isPhoneNumber) {
+        requestPayload.userPhoneNumber = this.emailOrPhone;
+      }
+
       // 发送登录请求
       axios
-        .post("http://localhost:3000/api/login", {
-          username: this.username,
-          password: this.password,
-        })
+        .post("http://localhost:3000/users/login", requestPayload)
         .then((response) => {
-          if (response.data.success) {
-            // 登录成功逻辑
-            localStorage.setItem("token", response.data.token);
-            localStorage.setItem("user", JSON.stringify(response.data.user));
-            this.$emit("login-success", response.data.user);
-            this.closeModal(); // 关闭弹窗
+          const userInfo = response.data.user; // 获取用户信息
+          const token = response.data.token; // 获取JWT Token
+
+          if (userInfo && token) {
+            // 存储用户信息和Token到localStorage
+            localStorage.setItem("userInfo", JSON.stringify(userInfo));
+            localStorage.setItem("token", token);
+
+            // 使用 Vuex 更新 userInfo 和 token
+            this.updateUserInfo(userInfo); // 更新用户信息
+            this.updateToken(token); // 更新 token
+            this.updateLoginStatus(true); // 设置登录状态
+
+            // 向父组件发送登录成功事件
+            this.$emit("login-success", userInfo);
+
+            // 关闭弹窗
+            this.closeModal();
           } else {
-            // 显示后端返回的错误信息
-            this.error = response.data.message || "用户名或密码错误";
+            this.error = "用户名或密码错误"; // 登录失败时的错误提示
           }
         })
         .catch((error) => {
-          // 网络错误处理
           console.error("登录请求失败：", error);
-          this.error = "登录失败，请检查网络连接或稍后再试";
+          this.error = "登录失败，请检查网络连接或稍后再试"; // 显示网络错误提示
         })
         .finally(() => {
-          // 无论成功与否，取消加载状态
-          this.isLoading = false;
+          this.isLoading = false; // 请求结束，取消加载状态
         });
     },
-    // 包装 handleLogin 方法，防止快速连续点击
-    handleLoginDebounced: debounce(function () {
-      this.handleLogin();
-    }, 1000), // 防抖延迟 1 秒
+
+    // 关闭弹窗的方法
     closeModal() {
-      // 关闭弹窗
-      this.$emit("close");
+      this.$emit("close"); // 向父组件发送关闭弹窗事件
     },
+
+    // 注册按钮的逻辑
     register() {
-      // 注册方法，实际的注册逻辑未实现
       console.log("注册逻辑触发");
     },
+
+    // 忘记密码按钮的逻辑
     forgotPassword() {
-      // 忘记密码方法，实际的密码恢复逻辑未实现
       console.log("忘记密码逻辑触发");
     },
   },
@@ -246,6 +256,6 @@ button:disabled {
 /* 超链接按钮鼠标悬停样式 */
 .link-btn:hover {
   color: #0056b3; /* 鼠标悬停时文字颜色变深 */
-  text-decoration: none; /* 鼠标悬停时移除下划线 */
+  text-decoration: none; /* 鼠标悬停时去掉下划线 */
 }
 </style>

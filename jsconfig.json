@@ -1,18 +1,35 @@
 {
   "compilerOptions": {
+    // 指定编译目标版本
+    // es5: 将代码编译为兼容 ES5 的版本，以支持旧版浏览器
     "target": "es5",
+    
+    // 指定模块系统
+    // esnext: 使用 ECMAScript 模块标准
     "module": "esnext",
+    
+    // 定义项目的根路径，"./" 表示当前项目根目录
     "baseUrl": "./",
+
+    // 模块解析策略
+    // node: 使用 Node.js 的模块解析规则
     "moduleResolution": "node",
+
+    // 路径别名配置
+    // "@/components/Example.vue" 会映射为 "src/components/Example.vue"
     "paths": {
-      "@/*": [
-        "src/*"
-      ]
+      "@/*": ["src/*"]
     },
+
+    // 包含的环境库
     "lib": [
+      // 使用最新的 ECMAScript 特性
       "esnext",
+      // 支持浏览器 DOM API
       "dom",
+      // 支持可迭代的 DOM 集合，例如 NodeList
       "dom.iterable",
+      // 支持 WScript 和 CScript 执行环境（Windows 下脚本宿主）
       "scripthost"
     ]
   }

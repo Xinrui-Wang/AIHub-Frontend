@@ -1,20 +1,18 @@
+<!-- ChatComponentTopBar.vue -->
 <template>
   <div class="button-container">
     <!-- 下拉按钮 -->
     <div class="dropdown">
       <!-- 触发下拉菜单的按钮，绑定点击事件 -->
       <button class="dropdown-btn" @click="toggleDropdown">
-        <!-- 显示当前选中的模型 -->
         {{ selectedModel }} <span class="arrow">&#9662;</span>
       </button>
-      <!-- 下拉列表，仅在 dropdownVisible 为 true 时显示 -->
       <div v-if="dropdownVisible" class="dropdown-list">
-        <!-- 遍历模型列表，生成下拉项 -->
         <div
           v-for="(model, index) in models"
           :key="index"
           class="dropdown-item"
-          @click="selectModel(model)" 
+          @click="selectModel(model)"
         >
           {{ model }}
         </div>
@@ -26,28 +24,23 @@
 
     <!-- 登录/个人资料按钮 -->
     <div class="profile-container">
-      <!-- 未登录时显示登录按钮 -->
       <button v-if="!isLoggedIn" @click="showLoginModal" class="btn-primary">
         登录
       </button>
-      <!-- 已登录时显示个人资料按钮，显示用户名或“个人资料” -->
       <button v-else @click="toggleProfileMenu" class="btn-primary">
-        {{ userInfo.username || "个人资料" }}
+        {{ userInfo.nickname || "个人资料" }}
       </button>
 
-      <!-- 个人资料弹窗 -->
       <div v-if="profileMenuVisible" class="profile-popup">
         <div class="profile-info">
-          <!-- 用户头像，如果没有则使用默认头像 -->
           <img
             :src="userInfo.avatar || defaultAvatar"
             alt="Avatar"
             class="avatar"
           />
-          <span>{{ userInfo.username }}</span>
+          <span>{{ userInfo.nickname || "未登录" }}</span>
         </div>
         <div class="profile-actions">
-          <!-- 查看资料和退出登录按钮 -->
           <button @click="viewProfile">查看资料</button>
           <button @click="logout">退出登录</button>
         </div>
@@ -56,83 +49,136 @@
 
     <!-- 登录弹窗 -->
     <LoginModal
-      v-if="isLoginModalVisible" 
-      @close="isLoginModalVisible = false"  
+      v-if="isLoginModalVisible"
+      @close="isLoginModalVisible = false"
       @login-success="handleLoginSuccess"
     />
   </div>
 </template>
 
 <script>
-// 导入模型配置文件和登录弹窗组件
-import modelsConfig from "@/config/modelsConfig"; // 引入配置文件
-import LoginModal from "./LoginModal.vue"; // 确保路径正确
+// 引入 Vuex 的 mapState 和 mapActions
+import axios from "axios";
+// import modelsConfig from "@/config/modelsConfig";
+import LoginModal from "./LoginModal.vue";
+import { mapState, mapActions } from "vuex";
 
 export default {
   data() {
     return {
-      models: modelsConfig.models, // 模型列表，来自配置文件
-      selectedModel: modelsConfig.defaultModel, // 默认选中的模型
+      // models: modelsConfig.models, // 模型列表，来自配置文件
+      // selectedModel: modelsConfig.defaultModel, // 默认选中的模型
       dropdownVisible: false, // 控制下拉菜单的显示与隐藏
       isLoginModalVisible: false, // 控制登录弹窗的显示与隐藏
-      isLoggedIn: false, // 用户登录状态，默认未登录
-      profileMenuVisible: false, // 控制个人资料弹窗的显示与隐藏
-      userInfo: { username: "小明", avatar: "" }, // 初始用户信息，用户名为“小明”
       defaultAvatar: "https://via.placeholder.com/40", // 默认头像
     };
   },
   components: {
-    LoginModal // 注册登录弹窗组件
+    LoginModal, // 注册登录弹窗组件
+  },
+  computed: {
+    ...mapState({
+      userInfo: (state) => state.userInfo, // 从 Vuex 获取 userInfo
+      isLoggedIn: (state) => state.isLoggedIn, // 从 Vuex 获取登录状态
+      profileMenuVisible: (state) => state.profileMenuVisible, // 从 Vuex 获取个人资料弹窗显示状态
+      selectedModel: (state) => state.selectedModel, // 从 Vuex 获取选中的模型
+      models: (state) => state.models, // 从 Vuex 获取 models 数组
+    }),
+  },
+  mounted() {
+    this.checkAutoLogin(); // 组件加载时检查自动登录
   },
   methods: {
+    ...mapActions([
+      "updateUserInfo", // Vuex action 用于更新用户信息
+      "updateToken", // Vuex action 用于更新 token
+      "updateLoginStatus", // Vuex action 用于更新登录状态
+      "toggleProfileMenu", // Vuex action 用于切换个人资料弹窗显示状态
+      "updateSelectedModel", // Vuex action 用于更新选中的模型
+    ]),
+
+    checkAutoLogin() {
+      const jwtToken = this.$store.state.token; // 使用 Vuex 中的 token
+      console.log("JWT Token from Vuex:", jwtToken); // 检查是否成功获取token
+      if (jwtToken) {
+        this.verifyToken(jwtToken); // 调用验证token的函数
+      } else {
+        console.log("No JWT Token found in Vuex");
+      }
+    },
+    verifyToken(token) {
+      console.log("Verifying Token...");
+      axios
+        .get("http://localhost:3000/users/verify-token", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        .then((response) => {
+          const userInfo = response.data.user;
+          const token = response.data.token;
+
+          if (userInfo && token) {
+            console.log("Token verified successfully:", userInfo, token);
+            localStorage.setItem("userInfo", JSON.stringify(userInfo));
+            localStorage.setItem("token", token);
+
+            this.updateUserInfo(userInfo); // 更新 Vuex 中的 userInfo
+            this.updateToken(token); // 更新 Vuex 中的 token
+            this.updateLoginStatus(true); // 设置登录状态
+          }
+        })
+        .catch((error) => {
+          console.error("Token verification failed:", error);
+          localStorage.removeItem("userInfo");
+          localStorage.removeItem("token");
+          this.$router.push("/");
+        });
+    },
+
     toggleDropdown() {
-      // 切换下拉菜单的可见状态
       this.dropdownVisible = !this.dropdownVisible;
     },
+
     selectModel(model) {
-      // 选择一个模型并关闭下拉菜单
-      this.selectedModel = model;
+      this.updateSelectedModel(model); // 更新选中的模型
       this.dropdownVisible = false;
       this.$emit("model-changed", model); // 向父组件发送模型改变事件
     },
+
     handleButton2() {
-      // 处理按钮2的点击事件，触发自定义事件
-      this.$emit("button2-click");
+      this.$emit("button2-click"); // 触发自定义事件
     },
+
     showLoginModal() {
-      // 显示登录弹窗
-      this.isLoginModalVisible = true;
+      this.isLoginModalVisible = true; // 显示登录弹窗
     },
+
     handleLoginSuccess(userInfo) {
-      // 登录成功后处理，更新用户信息并关闭登录弹窗
-      this.isLoggedIn = true;
-      this.userInfo = userInfo;
-      this.isLoginModalVisible = false;
+      console.log("登录成功，接收用户信息:", userInfo);
+      this.updateLoginStatus(true); // 更新登录状态
+      this.updateUserInfo(userInfo); // 更新用户信息
+      this.isLoginModalVisible = false; // 关闭登录弹窗
     },
-    handleLogin() {
-      // 模拟登录，通常应该请求后台接口进行验证
-      console.log("点击登录按钮");
-      setTimeout(() => {
-        // 模拟登录成功，设置用户信息
-        this.isLoggedIn = true;
-        this.userInfo = { username: "小明", avatar: "" };
-        console.log("用户已登录");
-      }, 1);  // 模拟异步操作
-    },
+
     toggleProfileMenu() {
-      // 切换个人资料弹窗的可见状态
-      this.profileMenuVisible = !this.profileMenuVisible;
+      this.$store.commit(
+        "setProfileMenuVisible",
+        !this.$store.state.profileMenuVisible
+      );
     },
+
     viewProfile() {
-      // 处理查看个人资料按钮的点击事件
       console.log("查看个人资料");
     },
+
     logout() {
-      // 处理退出登录的逻辑
       console.log("用户退出登录");
-      this.isLoggedIn = false;
-      this.profileMenuVisible = false;
-      this.userInfo = { username: "", avatar: "" }; // 清空用户信息
+      localStorage.removeItem("userInfo");
+      localStorage.removeItem("token");
+      this.updateLoginStatus(false); // 设置未登录状态
+      this.updateUserInfo({ nickname: "", avatar: "" }); // 清空用户信息
+      this.toggleProfileMenu(); // 隐藏个人资料弹窗
     },
   },
 };

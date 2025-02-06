@@ -1,5 +1,0 @@
-// modelsConfig.js
-export default {
-  models: ['kimi', '豆包', 'DeepSeek'], // 模型列表
-  defaultModel: 'kimi', // 默认选中的模型
-};

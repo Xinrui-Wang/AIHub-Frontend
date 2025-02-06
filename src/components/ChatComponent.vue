@@ -1,4 +1,4 @@
-<!-- ChatComponent 聊天页面组件 -->
+<!-- ChatComponent.vue -->
 <template>
   <div class="chat-container">
     <!-- 引入并使用 ButtonBar 组件 -->
@@ -10,6 +10,8 @@
 
     <!-- 消息列表 -->
     <div ref="messagesList" class="messages-list">
+      <!-- 遍历并显示消息 -->
+      <!-- 根据消息发送者添加不同的样式 -->
       <div
         v-for="(message, index) in messages"
         :key="index"
@@ -21,6 +23,8 @@
     </div>
 
     <!-- 输入框容器 -->
+    <!-- 双向绑定输入框内容 -->
+    <!-- 输入时调整文本框高度 -->
     <div class="input-container">
       <textarea
         v-model="inputMessage"
@@ -29,58 +33,73 @@
         @input="adjustTextareaHeight"
       ></textarea>
       <button @click="sendMessage">Send</button>
+      <!-- 发送按钮 -->
     </div>
   </div>
 </template>
 
 <script>
-import ButtonBar from "./ChatComponentTopBar.vue"; // 引入 ButtonBar 组件
-import modelsConfig from "@/config/modelsConfig"; // 引入配置文件
-import { sendMessage } from "@/services/messageService"; // 引入外部的 sendMessage 函数
+import ButtonBar from "./ChatComponentTopBar.vue";
+import { mapState, mapMutations } from "vuex"; // 引入 mapState 和 mapMutations
+import { sendMessage } from "@/services/messageService"; // 引入发送消息的服务
+
 
 export default {
   components: {
-    ButtonBar, // 注册 ButtonBar 组件
+    ButtonBar,
+  },
+  computed: {
+    // 使用 mapState 获取 Vuex 状态
+    ...mapState({
+      selectedModel: (state) => state.selectedModel,
+      isLoggedIn: (state) => state.isLoggedIn, // 获取登录状态
+    }),
   },
   data() {
     return {
       messages: [],
       inputMessage: "",
-      selectedModel: modelsConfig.defaultModel, // 默认模型
-      context: [], // 用于存储聊天上下文
+      context: [],
     };
   },
   methods: {
-    // 处理模型切换
+    // 使用 mapMutations 获取 Vuex mutations
+    ...mapMutations(["setSelectedModel"]),
+
     handleModelChange(model) {
-      this.selectedModel = model;
-      console.log("切换到的模型:", model);
+      this.setSelectedModel(model); // 使用 mapMutations 中的方法
     },
+
     async sendMessage() {
+      // 检查是否已登录
+      if (!this.isLoggedIn) {
+        // 提示用户登录
+        alert("请先登录！");
+        return; // 如果没有登录，直接返回，不发送消息
+      }
+
       if (this.inputMessage.trim() !== "") {
         const userText = this.inputMessage.trim();
         this.messages.push({ text: userText, sender: "user" });
         this.inputMessage = "";
 
-        // 构建问题（这里暂时只考虑文字）
         const question = {
           text: userText,
-          images: [], // 这里可以加入图片数据，或保持为空
-          audio: [], // 这里可以加入音频数据，或保持为空
-          video: [], // 这里可以加入视频数据，或保持为空
+          images: [],
+          audio: [],
+          video: [],
         };
 
         try {
-          // 调用 sendMessage 函数，图片、音频、视频和上下文可以不传
+          // 调用 sendMessage 函数发送请求
           const newMessages = await sendMessage(
-            this.selectedModel, // 模型类型
-            question.text, // 问题文本
-            question.images, // 图片，默认空数组
-            question.audio, // 音频，默认空数组
-            question.video, // 视频，默认空数组
-            this.context || "" // 上下文，默认空字符串
+            this.selectedModel, // 当前选择的模型
+            question.text, // 发送的文本消息
+            question.images, // 图片（目前为空）
+            question.audio, // 音频（目前为空）
+            question.video, // 视频（目前为空）
+            this.context || "" // 上下文（目前为空）
           );
-          // 此处后端返回数据为{"message": "value"}
           this.messages.push({ text: newMessages.message, sender: "system" });
         } catch (error) {
           console.error("发送请求失败:", error);
@@ -94,6 +113,7 @@ export default {
           const textarea = document.querySelector(".message-input");
           textarea.style.height = "40px";
         });
+
         this.scrollToBottom();
       }
     },

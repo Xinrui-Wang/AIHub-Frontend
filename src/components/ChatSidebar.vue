@@ -1,3 +1,4 @@
+<!-- ChatSidebar.vue -->
 <template>
   <el-menu
     class="menu"
