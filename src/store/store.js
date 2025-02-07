@@ -1,5 +1,7 @@
 // src/store.js
 import { createStore } from 'vuex';
+import axios from 'axios'; // 用于 API 请求
+import createPersistedState from 'vuex-persistedstate'; // 引入插件
 
 export default createStore({
   state: {
@@ -10,6 +12,7 @@ export default createStore({
     isLoggedIn: false,
     profileMenuVisible: false,
     isLoginModalVisible: false,
+    sessionList: [], // 新增 sessionList 用于存储会话列表
   },
   mutations: {
     setUserInfo(state, userInfo) {
@@ -30,14 +33,33 @@ export default createStore({
       state.isLoginModalVisible = status;
     },
     setSelectedModel(state, model) {
-      if (state.models.includes(model)) { // 检查模型是否在列表中
+      if (state.models.includes(model)) {
         state.selectedModel = model;
       } else {
         console.warn(`Model ${model} not found in the list`);
       }
     },
+    setSessionList(state, sessions) {
+      state.sessionList = sessions; // 更新 sessionList
+    },
   },
   actions: {
+    async fetchSessionList({ commit, state }) {
+      const userId = state.userInfo.id;
+      if (!userId) {
+        console.log("用户未登录，无法获取会话列表");
+        return;
+      }
+      try {
+        const response = await axios.get(
+          `${process.env.VUE_APP_API_URL}/sessions/get-sessions`,
+          { params: { user_id: userId, limit: 20 } }
+        );
+        commit('setSessionList', response.data); // 使用 mutation 更新 sessionList
+      } catch (error) {
+        console.error("获取会话列表失败：", error);
+      }
+    },
     updateUserInfo({ commit }, userInfo) {
       commit('setUserInfo', userInfo);
     },
@@ -57,4 +79,11 @@ export default createStore({
       commit('setSelectedModel', model);
     },
   },
+  plugins: [
+    createPersistedState({
+      key: 'myApp',
+      storage: window.localStorage,
+      paths: ['token', 'userInfo'],
+    }),
+  ],
 });

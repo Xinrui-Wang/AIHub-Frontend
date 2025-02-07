@@ -63,7 +63,6 @@ export default {
       "updateLoginStatus", // Vuex action，更新登录状态
     ]),
 
-    // 处理登录逻辑
     handleLogin() {
       // 检查邮箱/手机号和密码是否为空
       if (!this.emailOrPhone || !this.password) {
@@ -72,8 +71,8 @@ export default {
       }
 
       // 校验邮箱格式或手机号格式
-      const isEmail = /\S+@\S+\.\S+/.test(this.emailOrPhone); // 正则表达式检查邮箱格式
-      const isPhoneNumber = /^\d{11}$/.test(this.emailOrPhone); // 正则表达式检查手机号格式
+      const isEmail = /\S+@\S+\.\S+/.test(this.emailOrPhone);
+      const isPhoneNumber = /^\d{11}$/.test(this.emailOrPhone);
 
       // 如果既不是邮箱也不是手机号，显示错误信息
       if (!isEmail && !isPhoneNumber) {
@@ -83,14 +82,10 @@ export default {
 
       // 启动加载状态
       this.isLoading = true;
-      this.error = ""; // 清空错误信息
+      this.error = "";
 
       // 构建请求体
-      const requestPayload = {
-        password: this.password, // 密码
-      };
-
-      // 根据输入的是邮箱还是手机号，动态构造请求体
+      const requestPayload = { password: this.password };
       if (isEmail) {
         requestPayload.userEmail = this.emailOrPhone;
       } else if (isPhoneNumber) {
@@ -99,20 +94,24 @@ export default {
 
       // 发送登录请求
       axios
-        .post("http://localhost:3000/users/login", requestPayload)
+        .post(`${process.env.VUE_APP_API_URL}/users/login`, requestPayload)
         .then((response) => {
-          const userInfo = response.data.user; // 获取用户信息
-          const token = response.data.token; // 获取JWT Token
+          const { user: userInfo, token } = response.data;
 
           if (userInfo && token) {
-            // 存储用户信息和Token到localStorage
-            localStorage.setItem("userInfo", JSON.stringify(userInfo));
-            localStorage.setItem("token", token);
-
             // 使用 Vuex 更新 userInfo 和 token
-            this.updateUserInfo(userInfo); // 更新用户信息
-            this.updateToken(token); // 更新 token
-            this.updateLoginStatus(true); // 设置登录状态
+            this.updateUserInfo(userInfo);
+            this.updateToken(token);
+            this.updateLoginStatus(true);
+
+            // 存储用户信息和Token
+            // localStorage.setItem("userInfo", JSON.stringify(userInfo));
+            // localStorage.setItem("token", token);
+
+            // 立即获取会话列表
+            if (userInfo.id) {
+              this.$store.dispatch("fetchSessionList");
+            }
 
             // 向父组件发送登录成功事件
             this.$emit("login-success", userInfo);
@@ -120,15 +119,18 @@ export default {
             // 关闭弹窗
             this.closeModal();
           } else {
-            this.error = "用户名或密码错误"; // 登录失败时的错误提示
+            this.error = "用户名或密码错误";
           }
         })
         .catch((error) => {
-          console.error("登录请求失败：", error);
-          this.error = "登录失败，请检查网络连接或稍后再试"; // 显示网络错误提示
+          if (error.response && error.response.status === 401) {
+            this.error = "用户名或密码错误";
+          } else {
+            this.error = "登录失败，请检查网络连接或稍后再试";
+          }
         })
         .finally(() => {
-          this.isLoading = false; // 请求结束，取消加载状态
+          this.isLoading = false;
         });
     },
 

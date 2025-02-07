@@ -109,7 +109,7 @@ export default {
     verifyToken(token) {
       console.log("Verifying Token...");
       axios
-        .get("http://localhost:3000/users/verify-token", {
+        .get(`${process.env.VUE_APP_API_URL}/users/verify-token`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -132,7 +132,7 @@ export default {
           console.error("Token verification failed:", error);
           localStorage.removeItem("userInfo");
           localStorage.removeItem("token");
-          this.$router.push("/");
+          // this.$router.push("/");
         });
     },
 
@@ -174,11 +174,11 @@ export default {
 
     logout() {
       console.log("用户退出登录");
-      localStorage.removeItem("userInfo");
-      localStorage.removeItem("token");
-      this.updateLoginStatus(false); // 设置未登录状态
-      this.updateUserInfo({ nickname: "", avatar: "" }); // 清空用户信息
-      this.toggleProfileMenu(); // 隐藏个人资料弹窗
+      this.$store.dispatch("updateToken", ""); // 清空 token
+      this.$store.dispatch("updateUserInfo", { nickname: "", avatar: "" }); // 清空用户信息
+      this.$store.dispatch("updateLoginStatus", false); // 设置未登录状态
+      this.$store.commit("setSessionList", []); // 清空会话列表
+      this.$store.commit("setProfileMenuVisible", false); // 隐藏个人资料弹窗
     },
   },
 };
