@@ -120,8 +120,8 @@ export default {
 
           if (userInfo && token) {
             console.log("Token verified successfully:", userInfo, token);
-            localStorage.setItem("userInfo", JSON.stringify(userInfo));
-            localStorage.setItem("token", token);
+            // localStorage.setItem("userInfo", JSON.stringify(userInfo));
+            // localStorage.setItem("token", token);
 
             this.updateUserInfo(userInfo); // 更新 Vuex 中的 userInfo
             this.updateToken(token); // 更新 Vuex 中的 token
@@ -175,10 +175,12 @@ export default {
     logout() {
       console.log("用户退出登录");
       this.$store.dispatch("updateToken", ""); // 清空 token
-      this.$store.dispatch("updateUserInfo", { nickname: "", avatar: "" }); // 清空用户信息
+      this.$store.dispatch("updateUserInfo", ""); // 清空用户信息
       this.$store.dispatch("updateLoginStatus", false); // 设置未登录状态
       this.$store.commit("setSessionList", []); // 清空会话列表
       this.$store.commit("setProfileMenuVisible", false); // 隐藏个人资料弹窗
+      this.$store.commit("updateLoginStatus", false);
+      this.$router.push(`/`);
     },
   },
 };

@@ -1,3 +1,4 @@
+<!-- ChatSidebar.vue -->
 <template>
   <el-menu class="menu" default-active="1" :router="false">
     <!-- 新对话按钮 -->
@@ -51,6 +52,8 @@ export default {
     // 当组件挂载后，检查用户是否已登录
     if (this.userId) {
       this.$store.dispatch("fetchSessionList"); // 使用 action 从 Vuex 中直接管理会话请求
+      // 确保 fetchSessionList 完成后再打印 sessionList
+      console.log("获取到的会话列表：", this.sessionList);
     } else {
       this.$store.commit("setSessionList", []); // 未登录时清空会话
       console.log("用户未登录，无法加载会话列表");
@@ -58,7 +61,8 @@ export default {
   },
   methods: {
     loadSessionMessages(sessionId) {
-      this.$emit("session-selected", sessionId); // 通知父组件切换到该会话
+      // 通过 Vue Router 动态修改 URL
+      this.$router.push(`/s/${sessionId}`); // 修改 URL 为 /s/session_id
     },
   },
 };
