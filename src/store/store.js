@@ -46,6 +46,9 @@ export default createStore({
     setSessionId(state, sessionId) {
       state.sessionId = sessionId;
     },
+    clearSessionId(state) {
+      state.sessionId = null;
+    },
   },
   actions: {
     async fetchSessionList({ commit, state }) {
@@ -81,6 +84,9 @@ export default createStore({
     updateSessionId({ commit }, sessionId) {
       commit("setSessionId", sessionId);
     },
+    clearSessionId({ commit }) {
+      commit("clearSessionId");
+    }
   },
   plugins: [
     // localStorage 持久化 token 和 userInfo

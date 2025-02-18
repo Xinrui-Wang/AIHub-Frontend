@@ -70,7 +70,6 @@ export default {
     ...mapState({
       selectedModel: (state) => state.selectedModel, // 当前选中的模型
       isLoggedIn: (state) => state.isLoggedIn, // 是否已登录
-      sessionId: (state) => state.sessionId, // 当前会话 ID
     }),
   },
 
@@ -86,7 +85,7 @@ export default {
     /**
      * 监听路由参数 sessionId 变化
      * 1. 当 sessionId 变化时，若用户已登录：
-     *    - 更新 Vuex 中的 sessionId
+     *    - 更新 sessionStorage 中的 sessionId
      *    - 拉取该会话的历史消息
      * 2. 若用户未登录，则跳转回主页
      */
@@ -94,11 +93,11 @@ export default {
       immediate: true, // 组件初始化时立即执行
       handler(newSessionId) {
         console.log("完整路由对象:", this.$route);
-        console.log("当前 sessionId 为", newSessionId);
+        console.log("当前 sessionId 为", this.getSessionId());
         console.log("isLoggedIn:", this.isLoggedIn);
 
         if (newSessionId && this.isLoggedIn) {
-          this.setSessionId(newSessionId); // 更新 Vuex 中的 sessionId
+          this.setSessionId(newSessionId); // 更新 sessionStorage 中的 sessionId
           this.fetchSessionMessages(newSessionId); // 拉取历史消息
         } else {
           this.$router.push(`/`); // 未登录时跳转到首页
@@ -117,17 +116,16 @@ export default {
       }
     },
   },
-
   mounted() {
-    // 组件挂载后，若 Vuex 里已有 sessionId 且当前在首页，则跳转到对应会话
-    if (this.sessionId && this.$route.path === "/") {
-      this.$router.push(`/s/${this.sessionId}`);
+    // 组件挂载后，若 sessionStorage 里已有 sessionId 且当前在首页，则跳转到对应会话
+    const sessionId = this.getSessionId();
+    if (sessionId && this.$route.path === "/") {
+      this.$router.push(`/s/${sessionId}`);
     }
   },
-
   methods: {
     // 映射 Vuex Mutations
-    ...mapMutations(["setSelectedModel", "setSessionId"]),
+    ...mapMutations(["setSelectedModel"]),
 
     /**
      * 切换选中的模型
@@ -178,14 +176,14 @@ export default {
 
           // 发送用户和模型消息到后端保存
           const userMessageData = {
-            sessionId: this.sessionId, // 假设 sessionId 是从 Vuex 或其他地方获取的
+            sessionId: this.getSessionId(), // 从 sessionStorage 获取 sessionId
             sender: "user",
             message: userText,
           };
           await this.saveMessageToDatabase(userMessageData);
 
           const systemMessageData = {
-            sessionId: this.sessionId,
+            sessionId: this.getSessionId(),
             sender: "system",
             message: newMessages.message,
           };
@@ -231,6 +229,7 @@ export default {
      * @param {string} sessionId 会话 ID
      */
     async fetchSessionMessages(sessionId) {
+      //sessionStorage.setItem("hasSessionId", "true");
       try {
         const response = await axios.get(
           `${process.env.VUE_APP_API_URL}/sessions/${sessionId}/messages`
@@ -289,7 +288,30 @@ export default {
     clearSessionMessages() {
       this.messages = [];
       this.context = [];
-      this.setSessionId(null); // 清空 Vuex 中的 sessionId
+      this.removeSessionId(); // 清空 sessionStorage 中的 sessionId
+    },
+
+    /**
+     * 设置 sessionId 到 sessionStorage
+     * @param {string} sessionId 会话 ID
+     */
+    setSessionId(sessionId) {
+      sessionStorage.setItem("sessionId", sessionId);
+    },
+
+    /**
+     * 获取 sessionId 从 sessionStorage
+     * @returns {string} 会话 ID
+     */
+    getSessionId() {
+      return sessionStorage.getItem("sessionId");
+    },
+
+    /**
+     * 从 sessionStorage 中移除 sessionId
+     */
+    removeSessionId() {
+      sessionStorage.removeItem("sessionId");
     },
   },
 };
