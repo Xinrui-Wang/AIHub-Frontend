@@ -13,7 +13,7 @@ export default createStore({
     profileMenuVisible: false,
     isLoginModalVisible: false,
     sessionList: [], // 新增 sessionList 用于存储会话列表
-    //sessionId: localStorage.getItem('sessionId') || '', // 新增 sessionId 用于存储当前会话 ID
+    sessionId: null, // 新增 sessionId
   },
   mutations: {
     setUserInfo(state, userInfo) {
@@ -43,10 +43,9 @@ export default createStore({
     setSessionList(state, sessions) {
       state.sessionList = sessions; // 更新 sessionList
     },
-    // setSessionId(state, sessionId) {
-    //   state.sessionId = sessionId;
-    //   //localStorage.setItem('sessionId', sessionId); // 保存 sessionId 到 localStorage
-    // },
+    setSessionId(state, sessionId) {
+      state.sessionId = sessionId;
+    },
   },
   actions: {
     async fetchSessionList({ commit, state }) {
@@ -79,22 +78,16 @@ export default createStore({
     updateSelectedModel({ commit }, model) {
       commit('setSelectedModel', model);
     },
-    // updateSessionId({ commit }, sessionId) {
-    //   commit('setSessionId', sessionId); // 更新 sessionId
-    // },
+    updateSessionId({ commit }, sessionId) {
+      commit("setSessionId", sessionId);
+    },
   },
   plugins: [
     // localStorage 持久化 token 和 userInfo
     createPersistedState({
       key: 'myApp',
       storage: window.localStorage,
-      paths: ['token', 'userInfo','isLoggedIn'], // 这两个字段会一直保留
+      paths: ['token', 'userInfo','isLoggedIn','sessionId'], // 这两个字段会一直保留
     }),
-    // // sessionStorage 仅存储 sessionId（关闭页面后消失）
-    // createPersistedState({
-    //   key: 'sessionData',
-    //   storage: window.sessionStorage,
-    //   paths: ['sessionId'], // 仅 sessionId 受影响
-    // }),
   ],  
 });

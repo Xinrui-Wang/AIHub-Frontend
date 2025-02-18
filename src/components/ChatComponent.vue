@@ -57,163 +57,239 @@
 </template>
 
 <script>
-// 引入顶部按钮栏组件
-import ButtonBar from "./ChatComponentTopBar.vue";
-// 引入 Vuex 的 mapState 和 mapMutations，用于访问 Vuex 中的状态和 mutations
 import { mapState, mapMutations } from "vuex";
-// 引入发送消息的服务
-import { sendMessage } from "@/services/messageService";
-// 引入 axios 用于发送 HTTP 请求
 import axios from "axios";
+import ButtonBar from "./ChatComponentTopBar.vue";
+import { sendMessage } from "@/services/messageService";
 
 export default {
-  // 注册顶部按钮栏组件
-  components: { ButtonBar },
-  // 计算属性
+  components: { ButtonBar }, // 引入并注册顶部按钮栏组件
+
   computed: {
-    // 使用 Vuex 的 mapState 映射 selectedModel 和 isLoggedIn
+    // 映射 Vuex 状态
     ...mapState({
-      selectedModel: (state) => state.selectedModel,
-      isLoggedIn: (state) => state.isLoggedIn,
+      selectedModel: (state) => state.selectedModel, // 当前选中的模型
+      isLoggedIn: (state) => state.isLoggedIn, // 是否已登录
+      sessionId: (state) => state.sessionId, // 当前会话 ID
     }),
   },
-  // 数据
+
   data() {
     return {
-      // 消息数组，存储聊天消息
-      messages: [],
-      // 输入框的内容
-      inputMessage: "",
-      // 上下文，用于存储聊天上下文信息
-      context: [],
+      messages: [], // 存储聊天消息
+      inputMessage: "", // 存储用户输入内容
+      context: [], // 存储对话上下文
     };
   },
-  // 监视 currentSessionId 和 isLoggedIn 的变化
+
   watch: {
+    /**
+     * 监听路由参数 sessionId 变化
+     * 1. 当 sessionId 变化时，若用户已登录：
+     *    - 更新 Vuex 中的 sessionId
+     *    - 拉取该会话的历史消息
+     * 2. 若用户未登录，则跳转回主页
+     */
     "$route.params.sessionId": {
-      immediate: true, // 组件加载时立即执行一次
-      handler(SessionId) {
-        console.log("当前sessionId为", SessionId);
-        if (SessionId && this.isLoggedIn) {
-          this.fetchSessionMessages(SessionId);
+      immediate: true, // 组件初始化时立即执行
+      handler(newSessionId) {
+        console.log("完整路由对象:", this.$route);
+        console.log("当前 sessionId 为", newSessionId);
+        console.log("isLoggedIn:", this.isLoggedIn);
+
+        if (newSessionId && this.isLoggedIn) {
+          this.setSessionId(newSessionId); // 更新 Vuex 中的 sessionId
+          this.fetchSessionMessages(newSessionId); // 拉取历史消息
+        } else {
+          this.$router.push(`/`); // 未登录时跳转到首页
         }
-        else this.$router.push(`/`);
       },
     },
-    // 监听 isLoggedIn 的变化
+
+    /**
+     * 监听 isLoggedIn（登录状态）的变化
+     * 若用户登出，则清空当前会话消息
+     */
     isLoggedIn(newVal) {
+      console.log("登录状态变化为:", newVal);
       if (!newVal) {
-        console.log("当前isLoggedIn为", newVal);
-        // 如果用户未登录，清空会话内容
         this.clearSessionMessages();
       }
     },
   },
-  // 方法
+
+  mounted() {
+    // 组件挂载后，若 Vuex 里已有 sessionId 且当前在首页，则跳转到对应会话
+    if (this.sessionId && this.$route.path === "/") {
+      this.$router.push(`/s/${this.sessionId}`);
+    }
+  },
+
   methods: {
-    // 使用 Vuex 的 mapMutations 映射 setSelectedModel
-    ...mapMutations(["setSelectedModel"]),
-    // 处理模型变化
+    // 映射 Vuex Mutations
+    ...mapMutations(["setSelectedModel", "setSessionId"]),
+
+    /**
+     * 切换选中的模型
+     * @param {string} model 选择的模型名称
+     */
     handleModelChange(model) {
-      // 调用 Vuex 的 setSelectedModel 方法设置选中的模型
-      console.log("更换为模型", model); // 检查是否成功获取token
+      console.log("更换为模型", model);
       this.setSelectedModel(model);
     },
-    // 发送消息
+
+    /**
+     * 发送用户输入的消息
+     * 1. 检查用户是否已登录
+     * 2. 发送消息到后端，并将返回的 AI 回复存入 messages
+     * 3. 处理发送失败的情况
+     * 4. 调整输入框高度并滚动到底部
+     */
     async sendMessage() {
-      // 如果用户未登录，则提示登录
       if (!this.isLoggedIn) {
         alert("请先登录！");
         return;
       }
-      // 如果输入框的内容不为空
+
       if (this.inputMessage.trim() !== "") {
-        // 获取用户输入的文本
         const userText = this.inputMessage.trim();
-        // 将用户的消息添加到消息数组中
+
+        // 将用户输入的消息加入对话记录
         this.messages.push({ text: userText, sender: "user" });
+
         // 清空输入框
         this.inputMessage = "";
-        // 构造问题对象
+
         const question = { text: userText, images: [], audio: [], video: [] };
+
         try {
-          // 调用 sendMessage 服务发送消息
+          // 发送消息请求
           const newMessages = await sendMessage(
             this.selectedModel,
             question.text,
             question.images,
             question.audio,
             question.video,
-            this.context || ""
+            this.context || "" // 发送当前对话上下文
           );
-          // 将系统回复的消息添加到消息数组中
+
+          // 将模型回复的消息加入对话记录
           this.messages.push({ text: newMessages.message, sender: "system" });
+
+          // 发送用户和模型消息到后端保存
+          const userMessageData = {
+            sessionId: this.sessionId, // 假设 sessionId 是从 Vuex 或其他地方获取的
+            sender: "user",
+            message: userText,
+          };
+          await this.saveMessageToDatabase(userMessageData);
+
+          const systemMessageData = {
+            sessionId: this.sessionId,
+            sender: "system",
+            message: newMessages.message,
+          };
+          await this.saveMessageToDatabase(systemMessageData);
         } catch (error) {
-          // 捕获错误并打印错误信息
           console.error("发送请求失败:", error);
-          // 如果发送失败，则添加一条系统消息提示用户
+
+          // 发送失败时，给出错误提示
           this.messages.push({
             text: "发送请求失败，请稍后再试。",
             sender: "system",
           });
         }
-        // 在下次 DOM 更新后，调整输入框的高度并滚动到消息列表底部
+
+        // 让输入框恢复初始高度
         this.$nextTick(() => {
           const textarea = document.querySelector(".message-input");
           textarea.style.height = "40px";
         });
+
+        // 滚动到底部，显示最新消息
         this.scrollToBottom();
       }
     },
-    // 获取会话消息
+
+    // 保存消息到后端数据库
+    async saveMessageToDatabase(messageData) {
+      try {
+        // 发送包含消息数据的请求到后端
+        await axios.post(
+          `${process.env.VUE_APP_API_URL}/sessions/${messageData.sessionId}/messages`,
+          {
+            sender: messageData.sender, // "user" 或 "system"
+            message: messageData.message, // 消息内容
+          }
+        );
+      } catch (error) {
+        console.error("保存消息到数据库失败:", error);
+      }
+    },
+    /**
+     * 根据 sessionId 拉取该会话的历史消息
+     * @param {string} sessionId 会话 ID
+     */
     async fetchSessionMessages(sessionId) {
       try {
-        // 使用 axios 发送 GET 请求获取会话消息
         const response = await axios.get(
           `${process.env.VUE_APP_API_URL}/sessions/${sessionId}/messages`
         );
-        // 将获取到的消息转换为统一的格式并赋值给 messages 数组
+
+        // 将返回的消息存入 messages
         this.messages = response.data.map((message) => ({
           text: message.messageContent,
           sender: message.sender,
         }));
       } catch (error) {
-        // 捕获错误并打印错误信息
         console.error("Failed to fetch session messages:", error);
       }
     },
-    // 滚动到消息列表底部
+
+    /**
+     * 滚动聊天窗口到底部
+     */
     scrollToBottom() {
-      // 在下次 DOM 更新后，执行滚动操作
       this.$nextTick(() => {
         const chatContainer = this.$refs.messagesList;
         if (chatContainer) {
-          // 将滚动条滚动到消息列表的底部
           chatContainer.scrollTop = chatContainer.scrollHeight;
         }
       });
     },
-    // 按下 Shift + Enter 时换行
+
+    /**
+     * 处理输入框按下 Shift + Enter 插入换行
+     * @param {Event} event 事件对象
+     */
     newLine(event) {
       event.preventDefault();
       this.inputMessage += "\n";
+
+      // 调整输入框高度
       this.$nextTick(() => {
         const textarea = document.querySelector(".message-input");
         textarea.style.height = textarea.scrollHeight + "px";
       });
     },
-    // 调整输入框的高度
+
+    /**
+     * 监听输入框内容变化，动态调整高度
+     * @param {Event} event 事件对象
+     */
     adjustTextareaHeight(event) {
       const textarea = event.target;
-      // 先将高度设置为 auto，让浏览器自动计算高度
       textarea.style.height = "auto";
-      // 再将高度设置为内容的高度
       textarea.style.height = textarea.scrollHeight + "px";
     },
-    // 清空当前会话消息
+
+    /**
+     * 清空当前会话的消息
+     */
     clearSessionMessages() {
-      this.messages = []; // 清空消息内容
-      this.context = []; // 清空上下文内容
+      this.messages = [];
+      this.context = [];
+      this.setSessionId(null); // 清空 Vuex 中的 sessionId
     },
   },
 };

@@ -1,3 +1,4 @@
+// src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router';
 import Home from 'D:/Code/AIHub-Frontend/src/App.vue';  // 示例视图组件
 
@@ -15,7 +16,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
+  history: createWebHistory(),
   routes,
 });
 
