@@ -57,11 +57,10 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from "vuex";
+import { mapState, mapMutations, mapActions } from "vuex";
 import axios from "axios";
 import ButtonBar from "./ChatComponentTopBar.vue";
 import { sendMessage } from "@/services/messageService";
-
 export default {
   components: { ButtonBar }, // 引入并注册顶部按钮栏组件
 
@@ -126,6 +125,7 @@ export default {
   methods: {
     // 映射 Vuex Mutations
     ...mapMutations(["setSelectedModel"]),
+    ...mapActions(["createNewSession"]), // 映射 Vuex 的 createNewSession 方法
 
     /**
      * 切换选中的模型
@@ -135,7 +135,6 @@ export default {
       console.log("更换为模型", model);
       this.setSelectedModel(model);
     },
-
     /**
      * 发送用户输入的消息
      * 1. 检查用户是否已登录
@@ -149,62 +148,63 @@ export default {
         return;
       }
 
+      let sessionId = this.getSessionId();
+
+      // 如果 sessionId 不存在，调用 Vuex 的 createNewSession 方法来创建新会话
+      if (!sessionId) {
+        try {
+          sessionId = await this.createNewSession();
+          this.setSessionId(sessionId); // 更新 sessionStorage 中的 sessionId
+        } catch (error) {
+          console.error("创建新会话失败:", error);
+          return;
+        }
+      }
       if (this.inputMessage.trim() !== "") {
         const userText = this.inputMessage.trim();
-
-        // 将用户输入的消息加入对话记录
         this.messages.push({ text: userText, sender: "user" });
-
-        // 清空输入框
         this.inputMessage = "";
 
         const question = { text: userText, images: [], audio: [], video: [] };
 
         try {
-          // 发送消息请求
           const newMessages = await sendMessage(
             this.selectedModel,
             question.text,
             question.images,
             question.audio,
             question.video,
-            this.context || "" // 发送当前对话上下文
+            this.context || ""
           );
 
-          // 将模型回复的消息加入对话记录
           this.messages.push({ text: newMessages.message, sender: "system" });
 
-          // 发送用户和模型消息到后端保存
           const userMessageData = {
-            sessionId: this.getSessionId(), // 从 sessionStorage 获取 sessionId
+            sessionId: sessionId,
             sender: "user",
             message: userText,
           };
           await this.saveMessageToDatabase(userMessageData);
 
           const systemMessageData = {
-            sessionId: this.getSessionId(),
+            sessionId: sessionId,
             sender: "system",
             message: newMessages.message,
           };
           await this.saveMessageToDatabase(systemMessageData);
         } catch (error) {
           console.error("发送请求失败:", error);
-
-          // 发送失败时，给出错误提示
           this.messages.push({
             text: "发送请求失败，请稍后再试。",
             sender: "system",
           });
         }
 
-        // 让输入框恢复初始高度
         this.$nextTick(() => {
           const textarea = document.querySelector(".message-input");
           textarea.style.height = "40px";
         });
 
-        // 滚动到底部，显示最新消息
         this.scrollToBottom();
       }
     },

@@ -2,7 +2,7 @@
 <template>
   <div class="layout">
     <!-- 侧边栏，包含菜单等内容 -->
-     <chatSidebar/>
+     <chatSidebar ref="ChatSidebar"/>
 
     <!-- 内容区域，包括聊天输入框、聊天消息显示等核心功能 -->
     <div class="content">

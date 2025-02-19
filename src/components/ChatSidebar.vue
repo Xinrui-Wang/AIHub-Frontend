@@ -1,10 +1,10 @@
-<!-- ChatSidebar.vue -->
+<!-- ChatSidebar -->
 <template>
   <el-menu class="menu" default-active="1" :router="false">
     <!-- 新对话按钮 -->
     <el-menu-item index="1">
       <i class="el-icon-house"></i>
-      <span>新对话</span>
+      <span @click="handleCreateNewSession">新对话</span> <!-- 修改这里 -->
     </el-menu-item>
 
     <!-- 社区入口按钮 -->
@@ -38,7 +38,7 @@
 </template>
 
 <script>
-import { mapState } from "vuex";
+import { mapState, mapMutations, mapActions } from "vuex";
 
 export default {
   name: "ChatSidebar",
@@ -52,7 +52,6 @@ export default {
     // 当组件挂载后，检查用户是否已登录
     if (this.userId) {
       this.$store.dispatch("fetchSessionList"); // 使用 action 从 Vuex 中直接管理会话请求
-      // 确保 fetchSessionList 完成后再打印 sessionList
       console.log("获取到的会话列表：", this.sessionList);
     } else {
       this.$store.commit("setSessionList", []); // 未登录时清空会话
@@ -60,9 +59,25 @@ export default {
     }
   },
   methods: {
+    ...mapMutations(["setSessionList"]), // 映射 Vuex 的 setSessionList 方法
+    ...mapActions(["createNewSession"]), // 映射 Vuex 的 createNewSession 方法
+
+    // 加载会话消息
     loadSessionMessages(sessionId) {
-      // 通过 Vue Router 动态修改 URL
       this.$router.push(`/s/${sessionId}`); // 修改 URL 为 /s/session_id
+    },
+
+    // 新对话按钮的点击事件处理函数
+    async handleCreateNewSession() {
+      try {
+        const newSessionId = await this.createNewSession(); // 调用 Vuex 的 createNewSession 方法
+        console.log("新会话已创建，会话 ID 为：", newSessionId);
+        // 创建新会话后跳转到新会话页面
+        this.$router.push(`/s/${newSessionId}`);
+      } catch (error) {
+        console.error("创建新会话失败：", error);
+        alert("创建新会话失败，请稍后再试");
+      }
     },
   },
 };
@@ -95,7 +110,7 @@ export default {
 
 .session-button {
   width: 100%;
-  justify-content: center;
+  justify-content: left;
   color: #333;
   text-align: center;
   font-size: 14px;
