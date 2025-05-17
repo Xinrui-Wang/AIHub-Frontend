@@ -1,15 +1,18 @@
 // src/store.js
-import { createStore } from 'vuex';
-import axios from 'axios'; // 用于 API 请求
-import createPersistedState from 'vuex-persistedstate'; // 引入插件
+import { createStore } from "vuex";
+import axios from "axios"; // 用于 API 请求
+import createPersistedState from "vuex-persistedstate"; // 引入插件
 import { v4 as uuidv4 } from "uuid"; // 引入 uuid 库
 
 export default createStore({
   state: {
-    userInfo: JSON.parse(localStorage.getItem("userInfo")) || { nickname: "", avatar: "" },
+    userInfo: JSON.parse(localStorage.getItem("userInfo")) || {
+      nickname: "",
+      avatar: "",
+    },
     token: localStorage.getItem("token") || "",
-    selectedModel: 'kimi', // 默认选择模型 'kimi'
-    models: ['kimi', 'bert', 'gpt-3', 'gpt-4'], // 可选模型列表
+    selectedModel: "kimi", // 默认选择模型 'kimi'
+    models: ["kimi", "bert", "gpt-3", "gpt-4"], // 可选模型列表
     isLoggedIn: false,
     profileMenuVisible: false,
     isLoginModalVisible: false,
@@ -59,13 +62,30 @@ export default createStore({
           `${process.env.VUE_APP_API_URL}/sessions/get-sessions`,
           { params: { user_id: userId, limit: 20 } }
         );
-        commit('setSessionList', response.data); // 使用 mutation 更新 sessionList
+
+        console.log("会话列表数据:", response.data);
+
+        // 对 sessionList 按 updatedAt 进行倒序排序
+        const sortedSessions = response.data.sort((a, b) => {
+          const dateA = new Date(a.updatedAt);
+          const dateB = new Date(b.updatedAt);
+
+          // 检查日期是否有效
+          if (isNaN(dateA) || isNaN(dateB)) {
+            console.warn("会话的 updatedAt 字段不是有效的日期格式:", a, b);
+            return 0; // 或者根据需要处理
+          }
+
+          return dateB - dateA;
+        });
+
+        commit("setSessionList", sortedSessions); // 提交排序后的会话列表
       } catch (error) {
         console.error("获取会话列表失败：", error);
       }
     },
-     // 新增 createNewSession 方法
-     async createNewSession({ commit, state }) {
+    // 新增 createNewSession 方法
+    async createNewSession({ commit, state, dispatch }) {
       if (!state.userInfo.id) {
         alert("请先登录！");
         return;
@@ -73,7 +93,7 @@ export default createStore({
 
       // 生成新的 sessionId，并暂时将 sessionName 设置为 sessionId
       const newSessionId = uuidv4();
-      const newSessionName = newSessionId;
+      const newSessionName = "新会话";
 
       // 创建新的会话对象
       const newSession = {
@@ -93,9 +113,14 @@ export default createStore({
         );
 
         if (response.status === 200) {
-          // 后端插入成功，更新 Vuex 中的 sessionList
-          commit("setSessionList", [...state.sessionList, newSession]);
+          // 将新会话添加到列表的最前面
+          commit("setSessionList", [newSession, ...state.sessionList]);
           sessionStorage.setItem("sessionId", newSessionId);
+          // ✅ 正确调用方式：通过 dispatch
+          await dispatch("setSessionHasMessages", {
+            sessionId: newSessionId,
+            hasMessages: false,
+          });
 
           // 返回新会话 ID，以便调用组件可以使用
           return newSessionId;
@@ -108,22 +133,37 @@ export default createStore({
       }
     },
     updateUserInfo({ commit }, userInfo) {
-      commit('setUserInfo', userInfo);
+      commit("setUserInfo", userInfo);
     },
     updateToken({ commit }, token) {
-      commit('setToken', token);
+      commit("setToken", token);
     },
     updateLoginStatus({ commit }, status) {
-      commit('setLoggedIn', status);
+      commit("setLoggedIn", status);
     },
     toggleProfileMenu({ commit }, status) {
-      commit('setProfileMenuVisible', status);
+      commit("setProfileMenuVisible", status);
     },
     toggleLoginModal({ commit }, status) {
-      commit('setLoginModalVisible', status);
+      commit("setLoginModalVisible", status);
     },
     updateSelectedModel({ commit }, model) {
-      commit('setSelectedModel', model);
+      commit("setSelectedModel", model);
+    },
+    // 设置会话消息状态
+    // ✅ 正确定义 action
+    setSessionHasMessages(context, { sessionId, hasMessages }) {
+      sessionStorage.setItem(
+        `session_${sessionId}_hasMessages`,
+        hasMessages.toString()
+      );
+    },
+
+    // ✅ 正确定义 action
+    getSessionHasMessages(context, sessionId) {
+      return (
+        sessionStorage.getItem(`session_${sessionId}_hasMessages`) === "true"
+      );
     },
     // updateSessionId({ commit }, sessionId) {
     //   commit("setSessionId", sessionId);
@@ -135,9 +175,9 @@ export default createStore({
   plugins: [
     // localStorage 持久化 token 和 userInfo
     createPersistedState({
-      key: 'myApp',
+      key: "myApp",
       storage: window.localStorage,
-      paths: ['token', 'userInfo','isLoggedIn'], 
+      paths: ["token", "userInfo", "isLoggedIn"],
     }),
-  ],  
+  ],
 });

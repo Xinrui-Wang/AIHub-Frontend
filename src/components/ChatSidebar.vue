@@ -2,9 +2,10 @@
 <template>
   <el-menu class="menu" default-active="1" :router="false">
     <!-- 新对话按钮 -->
-    <el-menu-item index="1">
+    <el-menu-item index="1" @click="handleCreateNewSession($event)">
       <i class="el-icon-house"></i>
-      <span @click="handleCreateNewSession">新对话</span> <!-- 修改这里 -->
+      <span>新对话</span>
+      <!-- 修改这里 -->
     </el-menu-item>
 
     <!-- 社区入口按钮 -->
@@ -68,15 +69,29 @@ export default {
     },
 
     // 新对话按钮的点击事件处理函数
+
     async handleCreateNewSession() {
+      event.stopPropagation(); // 阻止事件冒泡
+      console.log("新对话按钮被点击");
+
+      const currentSessionId = sessionStorage.getItem("sessionId");
+      const hasMessages = currentSessionId
+        ? this.$store.dispatch("getSessionHasMessages", currentSessionId)
+        : false;
+
+      // 场景1：当前会话存在且为空 → 直接复用
+      if (currentSessionId && !hasMessages) {
+        this.$router.push(`/s/${currentSessionId}`);
+        return;
+      }
+
+      // 场景2：需要创建新会话
       try {
-        const newSessionId = await this.createNewSession(); // 调用 Vuex 的 createNewSession 方法
-        console.log("新会话已创建，会话 ID 为：", newSessionId);
-        // 创建新会话后跳转到新会话页面
+        const newSessionId = await this.createNewSession();
         this.$router.push(`/s/${newSessionId}`);
       } catch (error) {
         console.error("创建新会话失败：", error);
-        alert("创建新会话失败，请稍后再试");
+        // alert("创建新会话失败，请稍后再试");
       }
     },
   },

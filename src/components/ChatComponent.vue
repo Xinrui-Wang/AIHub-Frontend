@@ -27,7 +27,8 @@
         />
         <!-- 消息内容盒子，显示消息文本 -->
         <div class="message-box" :class="message.sender">
-          {{ message.text }}
+          <!-- 使用 v-html 渲染富文本内容 -->
+          <div v-html="renderMarkdown(message.text)"></div>
         </div>
         <!-- 如果消息发送者是用户，则显示用户头像 -->
         <img
@@ -61,6 +62,8 @@ import { mapState, mapMutations, mapActions } from "vuex";
 import axios from "axios";
 import ButtonBar from "./ChatComponentTopBar.vue";
 import { sendMessage } from "@/services/messageService";
+import { marked } from "marked"; // 引入 marked.js
+
 export default {
   components: { ButtonBar }, // 引入并注册顶部按钮栏组件
 
@@ -192,6 +195,10 @@ export default {
             message: newMessages.message,
           };
           await this.saveMessageToDatabase(systemMessageData);
+          
+          const hasMessages = true;
+          // 更新消息状态为「有内容」
+          this.$store.dispatch("setSessionHasMessages", { sessionId, hasMessages });
         } catch (error) {
           console.error("发送请求失败:", error);
           this.messages.push({
@@ -208,7 +215,6 @@ export default {
         this.scrollToBottom();
       }
     },
-
     // 保存消息到后端数据库
     async saveMessageToDatabase(messageData) {
       try {
@@ -244,7 +250,6 @@ export default {
         console.error("Failed to fetch session messages:", error);
       }
     },
-
     /**
      * 滚动聊天窗口到底部
      */
@@ -290,7 +295,6 @@ export default {
       this.context = [];
       this.removeSessionId(); // 清空 sessionStorage 中的 sessionId
     },
-
     /**
      * 设置 sessionId 到 sessionStorage
      * @param {string} sessionId 会话 ID
@@ -312,6 +316,10 @@ export default {
      */
     removeSessionId() {
       sessionStorage.removeItem("sessionId");
+    },
+    // 使用 marked 解析 Markdown 内容
+    renderMarkdown(content) {
+      return marked(content); // 将 Markdown 转为 HTML
     },
   },
 };
@@ -336,21 +344,18 @@ export default {
   flex-direction: column;
 }
 
-/* 消息容器的样式 */
 .message-wrapper {
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   max-width: 80%;
 }
 
-/* 用户消息的样式 */
 .message-wrapper.user {
   justify-content: flex-end;
   align-self: flex-end;
 }
 
-/* 系统消息的样式 */
 .message-wrapper.system {
   justify-content: flex-start;
   align-self: flex-start;
@@ -366,11 +371,12 @@ export default {
 
 /* 消息内容盒子的样式 */
 .message-box {
-  padding: 10px 15px;
+  padding: 3px 5px; /* 调整上下 padding 为 2px，左右 padding 为 10px */
   border-radius: 12px;
   max-width: 80%;
   word-wrap: break-word;
-  line-height: 1.4;
+  line-height: 1.5; /* 减小行高，减少行间距 */
+  margin: 2px 0; /* 控制外间距 */
 }
 
 /* 用户消息内容盒子的样式 */
