@@ -1,8 +1,8 @@
 AIHub 智能聊天平台
 
-https://img.shields.io/badge/Vue-3.3-green](https://vuejs.org/)
-https://img.shields.io/badge/Vuex-4.0-blue](https://vuex.vuejs.org/)
-https://img.shields.io/badge/Axios-1.5-red](https://axios-http.com/)
+[![Vue](https://img.shields.io/badge/Vue-3.3-42b983)](https://vuejs.org/)
+[![Vuex](https://img.shields.io/badge/Vuex-4.0-4fc08d)](https://vuex.vuejs.org/)
+[![Axios](https://img.shields.io/badge/Axios-1.5-dc1e26)](https://axios-http.com/)
 
 一个基于 Vue3 的智能聊天 Web 应用，支持多会话管理、富文本消息、多 AI 模型切换，提供类 ChatGPT 的交互体验。
 
