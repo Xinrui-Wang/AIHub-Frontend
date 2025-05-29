@@ -21,12 +21,18 @@
     <div class="divider"></div>
 
     <!-- 会话列表 -->
-    <template v-for="(session, index) in sessionListWithState" :key="session.sessionId">
+    <template
+      v-for="(session, index) in sessionListWithState"
+      :key="session.sessionId"
+    >
       <el-menu-item :index="String(index + 4)" class="session-item">
-        <span class="session-name" @click="loadSessionMessages(session.sessionId)">
+        <span
+          class="session-name"
+          @click="loadSessionMessages(session.sessionId)"
+        >
           {{ session.sessionName }}
         </span>
-        
+
         <!-- 操作按钮 & 二级卡片 -->
         <el-popover
           v-model:visible="session.showActionCard"
@@ -42,10 +48,10 @@
               class="action-trigger"
               @click.stop="toggleActionCard(session.sessionId)"
             >
-              <svg 
-                width="16" 
-                height="16" 
-                viewBox="0 0 16 16" 
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
                 class="three-dots-icon"
               >
                 <circle cx="8" cy="4" r="1.5" fill="currentColor"></circle>
@@ -54,7 +60,7 @@
               </svg>
             </el-button>
           </template>
-          
+
           <el-button
             type="danger"
             size="small"
@@ -93,20 +99,21 @@ export default {
       deletingSessionId: null,
       clickLock: false,
       localSessionStates: {},
-      activePopoverId: null
+      activePopoverId: null,
     };
   },
   computed: {
     ...mapState({
       userId: (state) => state.userInfo.id,
-      sessionList: (state) => state.sessionList
+      sessionList: (state) => state.sessionList,
     }),
     sessionListWithState() {
-      return this.sessionList.map(session => ({
+      return this.sessionList.map((session) => ({
         ...session,
-        showActionCard: this.localSessionStates[session.sessionId]?.showActionCard || false
+        showActionCard:
+          this.localSessionStates[session.sessionId]?.showActionCard || false,
       }));
-    }
+    },
   },
   mounted() {
     if (this.userId) {
@@ -128,19 +135,20 @@ export default {
 
     // 添加全局点击监听
     addOutsideClickListener() {
-      document.addEventListener('click', this.handleOutsideClick);
+      document.addEventListener("click", this.handleOutsideClick);
     },
 
     // 移除全局点击监听
     removeOutsideClickListener() {
-      document.removeEventListener('click', this.handleOutsideClick);
+      document.removeEventListener("click", this.handleOutsideClick);
     },
 
     // 处理外部点击
     handleOutsideClick(event) {
-      const isClickInside = event.target.closest('.session-action-card') || 
-                           event.target.closest('.action-trigger');
-      
+      const isClickInside =
+        event.target.closest(".session-action-card") ||
+        event.target.closest(".action-trigger");
+
       if (!isClickInside && this.activePopoverId) {
         this.closeActionCard(this.activePopoverId);
         this.removeOutsideClickListener();
@@ -152,22 +160,22 @@ export default {
     closeActionCard(sessionId) {
       this.localSessionStates = {
         ...this.localSessionStates,
-        [sessionId]: { showActionCard: false }
+        [sessionId]: { showActionCard: false },
       };
     },
 
     // 切换操作卡片
     toggleActionCard(sessionId) {
       if (this.clickLock) return;
-      
+
       this.clickLock = true;
       this.localSessionStates = {
         ...this.localSessionStates,
         [sessionId]: {
-          showActionCard: !this.localSessionStates[sessionId]?.showActionCard
-        }
+          showActionCard: !this.localSessionStates[sessionId]?.showActionCard,
+        },
       };
-      
+
       setTimeout(() => {
         this.clickLock = false;
       }, 300);
@@ -182,7 +190,7 @@ export default {
 
     // 关闭所有卡片
     closeAllActionCards() {
-      Object.keys(this.localSessionStates).forEach(sessionId => {
+      Object.keys(this.localSessionStates).forEach((sessionId) => {
         this.localSessionStates[sessionId].showActionCard = false;
       });
       this.removeOutsideClickListener();
@@ -192,13 +200,13 @@ export default {
     async executeDelete() {
       try {
         await this.deleteSession(this.deletingSessionId);
-        this.$message.success('删除成功');
-        
-        if (sessionStorage.getItem('sessionId') === this.deletingSessionId) {
-          this.$router.push('/');
+        this.$message.success("删除成功");
+
+        if (sessionStorage.getItem("sessionId") === this.deletingSessionId) {
+          this.$router.push("/");
         }
       } catch (error) {
-        this.$message.error('删除失败: ' + error.message);
+        this.$message.error("删除失败: " + error.message);
       } finally {
         this.showDeleteConfirm = false;
       }
@@ -228,8 +236,8 @@ export default {
       } catch (error) {
         console.error("创建新会话失败：", error);
       }
-    }
-  }
+    },
+  },
 };
 </script>
 
@@ -247,7 +255,7 @@ export default {
 
 .menu .el-menu-item:hover,
 .menu .el-menu-item:hover span {
-  color: #409EFF !important;
+  color: #409eff !important;
 }
 
 .session-item {
@@ -304,7 +312,7 @@ export default {
 .session-action-card {
   padding: 8px !important;
   min-width: 100px !important;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   border: none;
 }
 
