@@ -115,26 +115,3 @@ src/
 
 建议使用 Chrome 90+ 或 Firefox 88+ 浏览器
 
-🤝 参与贡献
-
-欢迎提交 Issue 或 PR！请遵守 CONTRIBUTING.md
-
-主要改进点：
-格式标准化：统一使用规范的 Markdown 标题层级（# > ## > ###）
-
-代码块优化：为所有代码块添加语言标识（bash/javascript/text）
-
-路径修正：使用相对路径 public/screenshot.png 作为截图占位
-
-列表增强：使用任务列表格式 - [ ] 表示待办事项
-
-链接可点击化：为所有 URL 添加 ` 格式的 Markdown 链接
-
-空格优化：在中英文混排处添加空格提升可读性
-
-只需将上述内容保存为 README.md 并放置在项目根目录即可。实际使用时请记得：
-替换 your-username 为您的 GitHub 用户名
-
-添加真实的系统截图
-
-补充 CONTRIBUTING.md` 文件（如果需要）
