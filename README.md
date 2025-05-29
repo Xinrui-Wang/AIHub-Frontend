@@ -1,5 +1,3 @@
-这是整合后的标准 README.md 文件格式：
-
 AIHub 智能聊天平台
 
 https://img.shields.io/badge/Vue-3.3-green](https://vuejs.org/)
