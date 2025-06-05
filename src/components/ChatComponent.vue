@@ -195,10 +195,13 @@ export default {
             message: newMessages.message,
           };
           await this.saveMessageToDatabase(systemMessageData);
-          
+
           const hasMessages = true;
-          // 更新消息状态为「有内容」
-          this.$store.dispatch("setSessionHasMessages", { sessionId, hasMessages });
+          // 更新对话消息状态为「有内容」
+          this.$store.dispatch("setSessionHasMessages", {
+            sessionId,
+            hasMessages,
+          });
         } catch (error) {
           console.error("发送请求失败:", error);
           this.messages.push({
