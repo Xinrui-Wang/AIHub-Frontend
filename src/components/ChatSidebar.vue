@@ -249,11 +249,13 @@ export default {
         ? await this.$store.dispatch("getSessionHasMessages", currentSessionId)
         : false;
 
+      // 如果当前会话存在且无消息，直接复用
       if (currentSessionId && !hasMessages) {
         this.$router.push(`/s/${currentSessionId}`);
         return;
       }
 
+      // 否则创建新会话
       try {
         const newSessionId = await this.createNewSession();
         this.$router.push(`/s/${newSessionId}`);
