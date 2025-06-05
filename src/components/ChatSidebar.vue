@@ -1,3 +1,4 @@
+<!-- ChatSidebar.vue-->
 <template>
   <el-menu class="menu" default-active="1" :router="false">
     <!-- 新对话按钮 -->
@@ -199,25 +200,48 @@ export default {
     // 执行删除
     async executeDelete() {
       try {
-        await this.deleteSession(this.deletingSessionId);
+        // 1. 调用Vuex action执行删除
+        await this.$store.dispatch("deleteSession", this.deletingSessionId);
+
+        // 2. 显示操作反馈
         this.$message.success("删除成功");
 
-        if (sessionStorage.getItem("sessionId") === this.deletingSessionId) {
-          this.$router.push("/");
+        // 3. 检查是否删除的是当前会话
+        const isCurrentSession =
+          sessionStorage.getItem("sessionId") === this.deletingSessionId;
+
+        // 4. 处理当前会话被删除的情况
+        if (isCurrentSession) {
+          sessionStorage.removeItem("sessionId"); // 清理存储
+          this.$router.push("/"); // 跳转首页
+        }
+
+        // 5. 可选：立即刷新会话列表
+        if (this.userId) {
+          await this.$store.dispatch("fetchSessionList");
         }
       } catch (error) {
-        this.$message.error("删除失败: " + error.message);
+        // 6. 增强错误处理
+        const errorMsg = error.response?.data?.message || error.message;
+        this.$message.error(`删除失败: ${errorMsg}`);
+
+        // 7. 可添加错误上报逻辑
+        console.error("会话删除失败:", error);
       } finally {
+        // 8. 确保UI状态重置
         this.showDeleteConfirm = false;
+        this.deletingSessionId = null;
       }
     },
-
     loadSessionMessages(sessionId) {
       this.$router.push(`/s/${sessionId}`);
     },
 
     async handleCreateNewSession(event) {
-      event?.stopPropagation();
+      // 确保 event 是有效的 DOM 事件对象
+      if (event && typeof event.stopPropagation === "function") {
+        event.stopPropagation();
+      }
       console.log("新对话按钮被点击");
 
       const currentSessionId = sessionStorage.getItem("sessionId");

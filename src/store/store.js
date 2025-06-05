@@ -12,7 +12,7 @@ export default createStore({
     },
     token: localStorage.getItem("token") || "",
     selectedModel: "kimi", // 默认选择模型 'kimi'
-    models: ["kimi", "bert", "gpt-3", "gpt-4"], // 可选模型列表
+    models: ["kimi", "混元"], // 可选模型列表
     isLoggedIn: false,
     profileMenuVisible: false,
     isLoginModalVisible: false,
@@ -46,6 +46,12 @@ export default createStore({
     },
     setSessionList(state, sessions) {
       state.sessionList = sessions; // 更新 sessionList
+    },
+    // 新增删除会话的mutation
+    removeSession(state, sessionId) {
+      state.sessionList = state.sessionList.filter(
+        (session) => session.sessionId !== sessionId
+      );
     },
     // setSessionId(state, sessionId) {
     //   state.sessionId = sessionId;
@@ -164,6 +170,29 @@ export default createStore({
       return (
         sessionStorage.getItem(`session_${sessionId}_hasMessages`) === "true"
       );
+    },
+    // 新增删除会话的action
+    async deleteSession({ commit, state }, sessionId) {
+      try {
+        // 1. 调用API删除后端数据
+        await axios.delete(
+          `${process.env.VUE_APP_API_URL}/sessions/${sessionId}/delete`,
+          {
+            params: {
+              user_id: state.userInfo.id,
+            },
+          }
+        );
+
+        // 2. 提交mutation更新前端状态
+        commit("removeSession", sessionId);
+
+        // 3. 返回成功结果
+        return true;
+      } catch (error) {
+        console.error("删除会话失败:", error);
+        throw error; // 抛出错误供组件捕获
+      }
     },
     // updateSessionId({ commit }, sessionId) {
     //   commit("setSessionId", sessionId);
